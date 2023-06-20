@@ -21,6 +21,7 @@ router.post("/messages", async (req, res) => {
     // Store in Firestore
     await db.collection("WhatsappMessages").add({
       status: "success",
+      messageId:data.messages[0].id,
       message: JSON.parse(messageInput),
     });
     res.json({
@@ -28,6 +29,7 @@ router.post("/messages", async (req, res) => {
       response: data,
     });
   } catch (error) {
+    // console.log(error);
     throw new Error(error.message)
   }
 });
