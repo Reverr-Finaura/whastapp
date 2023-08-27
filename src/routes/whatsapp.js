@@ -11,10 +11,15 @@ router.get("/whatsapp", (req, res) => {
 
 router.post("/messages", async (req, res) => {
   const recipient = req.body.recipient;
-  const messageInput = messageHelper.getTemplateTextInput(
+  // const messageInput = messageHelper.getTemplateTextInput(
+  //   // "917007393348",
+  //   recipient,
+  //   "Template Name Here"
+  // );
+  const messageInput = messageHelper.getCustomTextInput(
     // "917007393348",
     recipient,
-    "Template Name Here"
+    "Thank you for your message. We will get back to you soon."
   );
   try {
     const { data } = await sendMessage(messageInput);
@@ -51,84 +56,51 @@ router.post("/messages", async (req, res) => {
 //   });
 // });
 router.post("/webhook", async (req, res) => {
-  const { payload } = req.body;
-  const data = {
-    data: payload.jsonPayload.entry[0].changes[0].value,
-  };
+  try {
+    const { payload } = req.body;
 
-  // await db.collection("WhatsappMessages", "Received").add({
-  //   status: "success",
-  //   data: data,
-  // });
-  console.log("DATA", data);
-  console.log("Payload", payload);
+    const messageReceived = payload.jsonPayload.entry[0].changes[0].value.messages;
+    const messageText = messageReceived[0].text.body;
+    const messageFrom = messageReceived[0].from;
 
-  const messageReceived =
-    payload.jsonPayload.entry[0].changes[0].value.messages;
-  const messageText = messageReceived[0].text.body;
-  const messageFrom = messageReceived[0].from;
+    let messageInput;
 
-  if (
-    messageText == "Hi" ||
-    messageText == "hii" ||
-    messageText == "hello" ||
-    messageText == "HI"
-  ) {
-    const messageInput = messageHelper.getCustomTextInput(
-      // "917007393348",
-      messageFrom,
-      "Hello, How can I help you?"
-    );
-    try {
-      const { data } = await sendMessage(messageInput);
-      // Store in Firestore
-      // await db.collection("WhatsappMessages", "Send").add({
-      //   status: "success",
-      //   messageId: data.messages[0].id,
-      //   message: JSON.parse(messageInput),
-      // });
-      res.json({
-        status: "success",
-        response: data,
-      });
-    } catch (error) {
-      // console.log(error);
-      // throw new Error(error.message);
-      const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-      res.status(statusCode);
-      res.json({
-        message: error.message,
-      });
+    if (["hi", "hii", "hello"].includes(messageText.toLowerCase())) {
+      // Use a template or custom message here
+      messageInput = messageHelper.getTemplateTextInput(
+        // "917007393348",
+        messageFrom,
+        "Template Name Here"
+      );
+    } else {
+      messageInput = messageHelper.getCustomTextInput(
+        // "917007393348",
+        messageFrom,
+        "Thank you for your message. We will get back to you soon."
+      );
     }
-  } else {
-    const messageInput = messageHelper.getCustomTextInput(
-      // "917007393348",
-      messageFrom,
-      "Thank you for your message. We will get back to you soon."
-    );
-    try {
-      const { data } = await sendMessage(messageInput);
-      // Store in Firestore
-      // await db.collection("WhatsappMessages", "Send").add({
-      //   status: "success",
-      //   messageId: data.messages[0].id,
-      //   message: JSON.parse(messageInput),
-      // });
-      res.json({
-        status: "success",
-        response: data,
-      });
-    } catch (error) {
-      // console.log(error);
-      const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-      res.status(statusCode);
-      res.json({
-        message: error.message,
-      });
-      // throw new Error(error.message);
-    }
+
+    const { data } = await sendMessage(messageInput);
+    // Store in Firestore if needed
+    // await db.collection("WhatsappMessages").add({
+    //   status: "success",
+    //   messageId: data.messages[0].id,
+    //   message: JSON.parse(messageInput),
+    // });
+
+    res.json({
+      status: "success",
+      response: data,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    const statusCode = error.response ? error.response.status : 500;
+    res.status(statusCode).json({
+      message: error.message,
+    });
   }
 });
+
 module.exports = router;
 
 /**
