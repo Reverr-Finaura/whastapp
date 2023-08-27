@@ -19,23 +19,106 @@ router.post("/messages", async (req, res) => {
   try {
     const { data } = await sendMessage(messageInput);
     // Store in Firestore
-    await db.collection("WhatsappMessages").add({
-      status: "success",
-      messageId:data.messages[0].id,
-      message: JSON.parse(messageInput),
-    });
+    // await db.collection("WhatsappMessages").add({
+    //   status: "success",
+    //   messageId: data.messages[0].id,
+    //   message: JSON.parse(messageInput),
+    // });
     res.json({
       status: "success",
       response: data,
     });
   } catch (error) {
     // console.log(error);
-    throw new Error(error.message)
+    // throw new Error(error.message);
+    const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+    res.status(statusCode);
+    res.json({
+      message: error.message,
+    });
   }
 });
 
-router.get("/webhook", (req, res) => {});
-router.post("/webhook", (req, res) => {});
+// router.get("/webhook", async (req, res) => {
+//   await db.collection("WhatsappMessages", "Send").add({
+//     status: "success",
+//     text: "Testing",
+//   });
+//   const data = await db.collection("WhatsappMessages", "Send").get();
+//   res.json({
+//     status: "success",
+//     response: data,
+//   });
+// });
+router.post("/webhook", async (req, res) => {
+  const { payload } = req.body;
+  const data = {
+    data: payload.jsonPayload.entry[0].changes[0].value,
+  };
+
+  // await db.collection("WhatsappMessages", "Received").add({
+  //   status: "success",
+  //   data: data,
+  // });
+  console.log("DATA",data);
+  console.log("Payload", payload);
+
+  const messageReceived =
+    payload.jsonPayload.entry[0].changes[0].value.messages;
+  const messageText = messageReceived[0].text.body;
+  const messageFrom = messageReceived[0].from;
+
+  if (
+    messageText == "Hi" ||
+    messageText == "hii" ||
+    messageText == "hello" ||
+    messageText == "HI"
+  ) {
+    const messageInput = messageHelper.getCustomTextInput(
+      // "917007393348",
+      messageFrom,
+      "Hello, How can I help you?"
+    );
+    try {
+      const { data } = await sendMessage(messageInput);
+      // Store in Firestore
+      // await db.collection("WhatsappMessages", "Send").add({
+      //   status: "success",
+      //   messageId: data.messages[0].id,
+      //   message: JSON.parse(messageInput),
+      // });
+      res.json({
+        status: "success",
+        response: data,
+      });
+    } catch (error) {
+      // console.log(error);
+      throw new Error(error.message);
+    }
+  } else {
+    const messageInput = messageHelper.getCustomTextInput(
+      // "917007393348",
+      messageFrom,
+      "Thank you for your message. We will get back to you soon."
+    );
+    try {
+      const { data } = await sendMessage(messageInput);
+      // Store in Firestore
+      await db.collection("WhatsappMessages", "Send").add({
+        status: "success",
+        messageId: data.messages[0].id,
+        message: JSON.parse(messageInput),
+      });
+      res.json({
+        status: "success",
+        response: data,
+      });
+    } catch (error) {
+      // console.log(error);
+      throw new Error(error.message);
+    }
+  }
+});
 module.exports = router;
 
 /**
