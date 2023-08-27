@@ -60,7 +60,7 @@ router.post("/webhook", async (req, res) => {
   //   status: "success",
   //   data: data,
   // });
-  console.log("DATA",data);
+  console.log("DATA", data);
   console.log("Payload", payload);
 
   const messageReceived =
@@ -93,7 +93,12 @@ router.post("/webhook", async (req, res) => {
       });
     } catch (error) {
       // console.log(error);
-      throw new Error(error.message);
+      // throw new Error(error.message);
+      const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+      res.status(statusCode);
+      res.json({
+        message: error.message,
+      });
     }
   } else {
     const messageInput = messageHelper.getCustomTextInput(
@@ -104,18 +109,23 @@ router.post("/webhook", async (req, res) => {
     try {
       const { data } = await sendMessage(messageInput);
       // Store in Firestore
-      await db.collection("WhatsappMessages", "Send").add({
-        status: "success",
-        messageId: data.messages[0].id,
-        message: JSON.parse(messageInput),
-      });
+      // await db.collection("WhatsappMessages", "Send").add({
+      //   status: "success",
+      //   messageId: data.messages[0].id,
+      //   message: JSON.parse(messageInput),
+      // });
       res.json({
         status: "success",
         response: data,
       });
     } catch (error) {
       // console.log(error);
-      throw new Error(error.message);
+      const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+      res.status(statusCode);
+      res.json({
+        message: error.message,
+      });
+      // throw new Error(error.message);
     }
   }
 });
