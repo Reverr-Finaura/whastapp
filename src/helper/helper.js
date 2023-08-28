@@ -17,7 +17,7 @@ function getTemplateTextInput(recipient, templateName) {
     to: recipient,
     type: "template",
     template: {
-      name: "hello_world",
+      name: templateName,
       language: {
         code: "en_US",
       },

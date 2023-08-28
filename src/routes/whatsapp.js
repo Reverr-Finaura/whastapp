@@ -70,7 +70,7 @@ router.post("/webhook", async (req, res) => {
       messageInput = messageHelper.getTemplateTextInput(
         // "917007393348",
         messageFrom,
-        "Template Name Here"
+        "hello_world"
       );
     } else {
       messageInput = messageHelper.getCustomTextInput(
@@ -81,12 +81,13 @@ router.post("/webhook", async (req, res) => {
     }
 
     const { data } = await sendMessage(messageInput);
+  
     // Store in Firestore if needed
-    // await db.collection("WhatsappMessages").add({
-    //   status: "success",
-    //   messageId: data.messages[0].id,
-    //   message: JSON.parse(messageInput),
-    // });
+    await db.collection("WhatsappMessages").add({
+      status: "success",
+      messageId: data.messages[0].id,
+      message: JSON.parse(messageInput),
+    });
 
     res.json({
       status: "success",
