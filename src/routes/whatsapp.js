@@ -59,7 +59,7 @@ router.post("/webhook", async (req, res) => {
   try {
     const { payload } = req.body;
 
-    const messageReceived = payload.jsonPayload.entry[0].changes[0].value.messages;
+    const messageReceived = payload.entry[0].changes[0].value.messages;
     const messageText = messageReceived[0].text.body;
     const messageFrom = messageReceived[0].from;
 
