@@ -4,6 +4,8 @@ const sendMessage = require("../helper/message");
 const admin = require("../config/firebase");
 const router = express.Router();
 const db = admin.firestore();
+const {FieldValue,Timestamp} = admin.firestore;
+const {doc,arrayUnion,updateDoc} =require('firebase-admin/firestore');
 
 router.get("/whatsapp", (req, res) => {
   res.send("lets GOOO");
@@ -57,14 +59,16 @@ router.post("/messages", async (req, res) => {
 // });
 router.post("/webhook", async (req, res) => {
   try {
-    const { payload } = req.body;
+    const  {payload}  = req.body;
 
     const messageReceived = payload.entry[0].changes[0].value.messages;
     const messageText = messageReceived[0].text.body;
     const messageFrom = messageReceived[0].from;
+    const usermessage = messageReceived[0].text.body;
+    
 
     let messageInput;
-
+   
     if (["hi", "hii", "hello"].includes(messageText.toLowerCase())) {
       // Use a template or custom message here
       messageInput = messageHelper.getTemplateTextInput(
@@ -82,22 +86,49 @@ router.post("/webhook", async (req, res) => {
 
     const { data } = await sendMessage(messageInput);
   
+  
     // Store in Firestore if needed
-    await db.collection("WhatsappMessages").add({
-      status: "success",
-      messageId: data.messages[0].id,
-      message: JSON.parse(messageInput),
+    // await db.collection("WhatsappMessages").add({
+    //   status: "success",
+    //   messageId: data.messages[0].id,
+    //   message: JSON.parse(messageInput),
+    // });
+   const userexist = await db.collection("WhatsappMessages").doc(`${messageFrom}`).get()
+   if(!userexist.exists){
+    console.log("no doc");
+    await db.collection('WhatsappMessages').doc(`${messageFrom}`).set(
+     {exists: "true"})
+     await db.collection("WhatsappMessages").doc(`${messageFrom}`).update({
+      messages: FieldValue.arrayUnion(
+        {status: "success",
+           messageId: data.messages[0].id,
+       message: JSON.parse(messageInput),
+       date: Timestamp.now(),
+       usermessage,
+      })
+    }) 
+   }else{
+    await db.collection("WhatsappMessages").doc(`${messageFrom}`).update({
+      messages: FieldValue.arrayUnion(
+        {status: "success",
+           messageId: data.messages[0].id,
+       message: JSON.parse(messageInput),
+       date: Timestamp.now(),
+       usermessage,
+      })
     });
-
+   }
+     
     res.json({
       status: "success",
-      response: data,
     });
   } catch (error) {
+ 
     console.error("Error:", error);
     const statusCode = error.response ? error.response.status : 500;
     res.status(statusCode).json({
       message: error.message,
+    
     });
   }
 });
