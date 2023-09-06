@@ -1,11 +1,53 @@
 const express = require("express");
 const messageHelper = require("../helper/helper");
 const sendMessage = require("../helper/message");
+const sendMediaMessage = require("../helper/mediamessage");
+const getmedia = require("../helper/mediamessage");
 const admin = require("../config/firebase");
 const router = express.Router();
 const db = admin.firestore();
 const {FieldValue,Timestamp} = admin.firestore;
-const {doc,arrayUnion,updateDoc} =require('firebase-admin/firestore');
+const { default: axios } = require("axios");
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+
+const storageRef = admin.storage().bucket(`gs://reverr-25fb3.appspot.com`);
+var outputPath = ''
+
+
+async function uploadFile(path, filename,mediaid,messageFrom) {
+
+  // Upload the File
+  const storage = await storageRef.upload(path, {
+      public: true,
+      destination: `Whatsappclouduploads/${filename}`,
+     
+  });
+
+  fs.stat(`${path}`, function (err, stats) {
+    // console.log(stats);
+    if (err) {
+        return console.error(err);
+    }
+    fs.unlink(`${path}`,function(err){
+         if(err) return console.log(err);
+    });  
+ });
+
+ await db.collection("WhatsappMessages").doc(`${messageFrom}`).update({
+  messages: FieldValue.arrayUnion(
+    {status: "success",
+       messageId: mediaid,
+   date: Timestamp.now(),
+   url: storage[0].metadata.mediaLink
+  })
+});
+  
+
+// console.log(storage[0].metadata.mediaLink);
+  return  storage[0].metadata.mediaLink;
+}
+
 
 router.get("/whatsapp", (req, res) => {
   res.send("lets GOOO");
@@ -59,13 +101,60 @@ router.post("/messages", async (req, res) => {
 // });
 router.post("/webhook", async (req, res) => {
   try {
-    const  {payload}  = req.body;
-
+    const  payload  = req.body;
     const messageReceived = payload.entry[0].changes[0].value.messages;
+    // console.log(messageReceived);
+    const messageFrom = messageReceived[0].from;
+
+    //for media files start
+    if(messageReceived[0].type === "image"){
+      const mediaid= messageReceived[0].image.id;
+      const media = await getmedia(mediaid)
+      const mediaurl = media.data.url
+     outputPath = `${mediaid}.png`
+    res.send(mediaurl);
+    
+     axios(mediaurl,{
+      method: 'GET',
+      responseType: 'stream',
+      headers: {
+        Authorization: `Bearer ${process.env.ACCESS_TOKEN}` ,
+      },
+    }).then((response) => {
+      // console.log(response);
+
+      const writer = fs.createWriteStream(outputPath);
+       response.data.pipe(writer);
+      // writer.pipe(uploadStream);
+      writer.on('finish', () => {
+    const url =  uploadFile(outputPath, outputPath,mediaid,messageFrom);
+    // return  console.log(url);
+        console.log(`File saved as ${outputPath}`);
+      });
+  
+      writer.on('error', (err) => {
+        console.error('Error saving file:', err);
+      });
+    })
+    .catch((error) => {
+      console.error('Error making request:', error);
+    });
+  
+    //  console.log("done");
+    
+  
+    }
+    //for media files end
+
+    else{
+
+    
+
+
+    //for text below
     const messageText = messageReceived[0].text.body;
     const messageFrom = messageReceived[0].from;
     const usermessage = messageReceived[0].text.body;
-    
 
     let messageInput;
    
@@ -121,14 +210,15 @@ router.post("/webhook", async (req, res) => {
      
     res.json({
       status: "success",
+     
     });
-  } catch (error) {
+  }} catch (error) {
  
     console.error("Error:", error);
     const statusCode = error.response ? error.response.status : 500;
     res.status(statusCode).json({
       message: error.message,
-    
+     
     });
   }
 });
