@@ -120,7 +120,7 @@ router.post("/webhook", async (req, res) => {
     let mediaid = " "
     let mediatype = " "
     //for media files start
-    if(messageReceived[0].type === "image" || "audio"){
+    if(messageReceived[0].type === "image" || messageReceived[0].type === "audio" || messageReceived[0].type === "video"){
       if(messageReceived[0].type === "image"){
         mediaid= messageReceived[0].image.id;
         mediatype = "png"
