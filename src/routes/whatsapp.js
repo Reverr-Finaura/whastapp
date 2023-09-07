@@ -11,16 +11,25 @@ const { default: axios } = require("axios");
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
+
+const uuid = uuidv4();
+
+
 const storageRef = admin.storage().bucket(`gs://reverr-25fb3.appspot.com`);
 var outputPath = ''
 
 
-async function uploadFile(path, filename,mediaid,messageFrom) {
+async function uploadFile(path, filename,mediaid,messageFrom,mediatype) {
 
   // Upload the File
   const storage = await storageRef.upload(path, {
       public: true,
       destination: `Whatsappclouduploads/${filename}`,
+      metadata: {
+        metadata :{
+          firebaseStorageDownloadTokens: uuid,
+       }
+    },
      
   });
 
@@ -39,12 +48,15 @@ async function uploadFile(path, filename,mediaid,messageFrom) {
     {status: "success",
        messageId: mediaid,
    date: Timestamp.now(),
-   url: storage[0].metadata.mediaLink
+   url: storage[0].metadata.mediaLink,
+   previevUrl: `https://firebasestorage.googleapis.com/v0/b/reverr-25fb3.appspot.com/o/${storage[0].id}?alt=media&token=${storage[0].metadata.metadata.firebaseStorageDownloadTokens}`,
+   mediatype: mediatype
   })
 });
   
 
-// console.log(storage[0].metadata.mediaLink);
+// console.log(storage[0].metadata.metadata.firebaseStorageDownloadTokens);
+// console.log(storage[0].id);
   return  storage[0].metadata.mediaLink;
 }
 
@@ -105,13 +117,26 @@ router.post("/webhook", async (req, res) => {
     const messageReceived = payload.entry[0].changes[0].value.messages;
     // console.log(messageReceived);
     const messageFrom = messageReceived[0].from;
-
+    let mediaid = " "
+    let mediatype = " "
     //for media files start
-    if(messageReceived[0].type === "image"){
-      const mediaid= messageReceived[0].image.id;
+    if(messageReceived[0].type === "image" || "audio"){
+      if(messageReceived[0].type === "image"){
+        mediaid= messageReceived[0].image.id;
+        mediatype = "png"
+      }
+      if(messageReceived[0].type === "audio"){
+        mediaid= messageReceived[0].audio.id;
+        mediatype = "mp3"
+      }
+      if(messageReceived[0].type === "video"){
+        mediaid= messageReceived[0].video.id;
+        mediatype = "mp4"
+      }
+      
       const media = await getmedia(mediaid)
       const mediaurl = media.data.url
-     outputPath = `${mediaid}.png`
+     outputPath = `${mediaid}.${mediatype}`
     res.send(mediaurl);
     
      axios(mediaurl,{
@@ -121,13 +146,13 @@ router.post("/webhook", async (req, res) => {
         Authorization: `Bearer ${process.env.ACCESS_TOKEN}` ,
       },
     }).then((response) => {
-      // console.log(response);
+      //  console.log(response);
 
       const writer = fs.createWriteStream(outputPath);
        response.data.pipe(writer);
       // writer.pipe(uploadStream);
       writer.on('finish', () => {
-    const url =  uploadFile(outputPath, outputPath,mediaid,messageFrom);
+    const url =  uploadFile(outputPath, outputPath,mediaid,messageFrom,mediatype);
     // return  console.log(url);
         console.log(`File saved as ${outputPath}`);
       });
