@@ -1,5 +1,5 @@
 # whastapp
 
-npm i
-install nodemon
-nodemon src/index.js
+# npm i
+# install nodemon
+# nodemon src/index.js
