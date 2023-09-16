@@ -120,7 +120,7 @@ router.post("/webhook", async (req, res) => {
     let mediaid = " "
     let mediatype = " "
     //for media files start
-    if(messageReceived[0].type === "image" || messageReceived[0].type === "audio" || messageReceived[0].type === "video"){
+    if(messageReceived[0].type === "image" || messageReceived[0].type === "audio" || messageReceived[0].type === "video" || messageReceived[0].type === "document"){
       if(messageReceived[0].type === "image"){
         mediaid= messageReceived[0].image.id;
         mediatype = "png"
@@ -132,6 +132,22 @@ router.post("/webhook", async (req, res) => {
       if(messageReceived[0].type === "video"){
         mediaid= messageReceived[0].video.id;
         mediatype = "mp4"
+      }
+      if(messageReceived[0].type === "document" && messageReceived[0].document.mime_type === "application/pdf" ){
+        // && messageReceived[0].document.mime_type === "application/pdf"
+        // console.log("test22",messageReceived[0].document);
+        mediaid= messageReceived[0].document.id;
+        mediatype = "pdf"
+      }
+      if(messageReceived[0].type === "document" && messageReceived[0].document.mime_type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ){
+        // && messageReceived[0].document.mime_type === "application/pdf"
+        // console.log("test22",messageReceived[0].document);
+        mediaid= messageReceived[0].document.id;
+        mediatype = "docx"
+      }
+      if(messageReceived[0].type === "document" && messageReceived[0].document.mime_type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ){
+        mediaid= messageReceived[0].document.id;
+        mediatype = "xlsx"
       }
       
       const media = await getmedia(mediaid)
